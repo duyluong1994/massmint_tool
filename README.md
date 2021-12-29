@@ -13,4 +13,11 @@
 - npm i (only once time)
 - clear db
 - modify config.json
-- npm start
+- provide assets.csv
+- node ./massmint.js
+
+# Failed case:
+
+- node ./fails_to_assets_csv.js
+- clear db
+- rename failed-assets.csv to assets.csv

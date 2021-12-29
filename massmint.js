@@ -21,7 +21,7 @@ const setup = () => {
   const adapter = new FileSync("db/massmint.json");
   const _db = low(adapter);
 
-  _db.defaults({ total: 0, minted: 0, lastIndex: 0 }).write();
+  _db.defaults({ total: 0, minted: 0, failed: [] }).write();
 
   const logFormat = winston.format.printf(
     (info) => `${new Date().toLocaleString()} - ${info.message}`
@@ -62,17 +62,8 @@ const run = async () => {
     config.smartcontract !== "",
     "Smart contract account must not be empty"
   );
-  asserter(config.miner !== "", "Miner account must not be empty");
-  asserter(
-    config.newassetowner !== "",
-    "New asset owner account must not be empty"
-  );
 
   asserter(config.privateKey !== "", "Miner's private key must not be empty");
-  asserter(config.collection_name !== "", "Collection name must not be empty");
-  asserter(config.schema_name !== "", "Schema name must not be empty");
-  asserter(config.template_id > 0, "Template ID name must be greater than 0");
-  asserter(config.amount > 0, "Amount can not be less than 0");
 
   if (
     (await Prompter.prompt(
@@ -87,13 +78,13 @@ const run = async () => {
 
   let assets = await CsvTools.getCSV("assets.csv");
   const assetsJSON = CsvTools.csvToJson(assets);
-  console.log(assetsJSON);
 
-  db.set("total", config.amount).write();
+  db.set("total", assetsJSON.length).write();
   const minted = db.get("minted").value();
   const total = db.get("total").value();
+
   logger.warn(
-    `Starting to minting from  minted: ${minted}. Need to mint: ${
+    `Starting to minting. Already minted: ${minted}. Need to mint: ${
       total - minted
     } `
   );
@@ -104,7 +95,7 @@ const run = async () => {
   // Shutting off IO
   Prompter.donePrompting();
 
-  await ChainTools.massMint(config);
+  await ChainTools.massMint(assetsJSON, config);
 
   logger.warn(`Finished MASSMINT at ${new Date().toLocaleString()}`);
   process.exit();

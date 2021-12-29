@@ -39,3 +39,7 @@ exports.csvToJson = (csv) => {
 
   return tupled;
 };
+
+exports.jsonToCsv = (json) => {
+  return json.map((item) => `${JSON.stringify(item)},`).join(`\r\n`);
+};

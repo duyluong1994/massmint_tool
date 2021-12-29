@@ -19,7 +19,7 @@ exports.setLogger = (_logger) => (logger = _logger);
 exports.setDB = (_db) => (db = _db);
 
 const minted = () => db.get("minted").value();
-const total = () => db.get("total").value();
+const failed = () => db.get("failed").value();
 
 const getAPI = async (network, privateKey) => {
   logger.warn(`network: ${network}`);
@@ -39,62 +39,52 @@ const getAPI = async (network, privateKey) => {
  * Batches out requests to 10 transactions per batch.
  * Then waits 510 milliseconds between batches to hit the next block.
  */
-exports.massMint = async (config) => {
+exports.massMint = async (assets, config) => {
   const eos = await getAPI(config.network, config.privateKey);
 
   const auth = {
     authorization: [`${config.miner}@${config.permission}`],
   };
 
-  const lastMinted = minted();
-  const needToMint = total() - lastMinted;
-
-  if (lastMinted > 0)
-    logger.warn(`Massmint's already processed ${lastMinted} assets.`);
+  let assetsFrom = assets.slice(minted());
 
   started = Date.now();
 
-  await recurseBatch(needToMint, eos, auth, config);
+  await recurseBatch(assetsFrom, eos, auth, config);
 };
 
-const recurseBatch = async (needToMint, eos, auth, config) => {
-  if (needToMint == 0) return true;
+const recurseBatch = async (assets, eos, auth, config) => {
+  if (assets.length == 0) return true;
 
-  logger.info(`Total assets to process: ${needToMint}`);
-  const mintingBatches = [];
-  for (let i = 0; i < needToMint; i++) {
-    mintingBatches.push(1);
-  }
+  logger.info(`Total assets to process: ${assets.length}`);
 
   await pMap(
-    mintingBatches,
+    assets,
     (batch, index) => {
-      printEta(index, mintingBatches.length - index);
-      return dropBatch(eos, auth, config);
+      printEta(index, assets.length - index);
+      return dropBatch(batch, eos, auth, config);
     },
     { concurrency: 1 }
   );
-
-  // await Promise.all(mintingBatches);
 };
 
-const dropBatch = async (eos, auth, config, tries = 0) => {
+const dropBatch = async (batch, eos, auth, config, tries = 0) => {
   if (tries > 3) {
+    db.update("failed", (tuples) => (tuples = tuples.concat(batch))).write();
     return false;
   }
 
+  const { smartcontract, permission } = config;
   const {
-    smartcontract,
-    miner,
-    newassetowner,
-    permission,
+    authorized_minter,
+    new_asset_owner,
     collection_name,
     schema_name,
     template_id,
     immutable_data,
     mutable_data,
-    batchSize,
-  } = config;
+    tokens_to_back,
+  } = batch;
 
   let transactionId;
   let actions = [];
@@ -104,19 +94,19 @@ const dropBatch = async (eos, auth, config, tries = 0) => {
     name: "mintasset",
     authorization: [
       {
-        actor: miner,
+        actor: authorized_minter,
         permission,
       },
     ],
     data: {
-      authorized_minter: miner,
+      authorized_minter,
       collection_name,
       schema_name,
       template_id,
-      new_asset_owner: newassetowner,
+      new_asset_owner,
       immutable_data,
       mutable_data,
-      tokens_to_back: [],
+      tokens_to_back,
     },
   });
 
