@@ -2,6 +2,7 @@ const fs = require("fs");
 const winston = require("winston");
 const Prompter = require("./services/Prompter");
 const ChainTools = require("./services/ChainTools");
+const CsvTools = require("./services/CsvTools");
 
 let config = {};
 let logger = null;
@@ -20,7 +21,7 @@ const setup = () => {
   const adapter = new FileSync("db/massmint.json");
   const _db = low(adapter);
 
-  _db.defaults({ total: 0, minted: 0 }).write();
+  _db.defaults({ total: 0, minted: 0, lastIndex: 0 }).write();
 
   const logFormat = winston.format.printf(
     (info) => `${new Date().toLocaleString()} - ${info.message}`
@@ -83,6 +84,11 @@ const run = async () => {
   logger.warn(
     "\r\n------------------------------------------------------------------\r\n"
   );
+
+  let assets = await CsvTools.getCSV("assets.csv");
+  const assetsJSON = CsvTools.csvToJson(assets);
+  console.log(assetsJSON);
+
   db.set("total", config.amount).write();
   const minted = db.get("minted").value();
   const total = db.get("total").value();
