@@ -9,5 +9,7 @@
   "collection_name":"testkickback",
   "schema_name": "testschema",
   "template_id": 261353,
+  "immutable_data": [],
+  "mutable_data": [],
   "amount": 10
 }

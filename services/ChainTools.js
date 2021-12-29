@@ -91,6 +91,8 @@ const dropBatch = async (eos, auth, config, tries = 0) => {
     collection_name,
     schema_name,
     template_id,
+    immutable_data,
+    mutable_data,
     batchSize,
   } = config;
 
@@ -112,8 +114,8 @@ const dropBatch = async (eos, auth, config, tries = 0) => {
       schema_name,
       template_id,
       new_asset_owner: newassetowner,
-      immutable_data: [],
-      mutable_data: [],
+      immutable_data,
+      mutable_data,
       tokens_to_back: [],
     },
   });

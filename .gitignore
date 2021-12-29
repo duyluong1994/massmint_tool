@@ -3,5 +3,5 @@ node_modules
 logs
 db
 *.csv
-.DS_STORE/
+.DS_Store
 .vscode/
