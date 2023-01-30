@@ -12,13 +12,13 @@ let db = null;
 let started = null;
 
 const printEta = (processed, left) => {
-  logger.info(`Processed ${processed} assets, ${left} assets left. `);
+  logger.info(`Processed ${processed} items, ${left} items left. `);
 };
 
 exports.setLogger = (_logger) => (logger = _logger);
 exports.setDB = (_db) => (db = _db);
 
-const minted = () => db.get("minted").value();
+const processed = () => db.get("processed").value();
 const failed = () => db.get("failed").value();
 
 const getAPI = async (network, privateKey) => {
@@ -35,33 +35,33 @@ const getAPI = async (network, privateKey) => {
 };
 
 /***
- * Starts minting assets.
+ * Starts process.
  * Batches out requests to 10 transactions per batch.
  * Then waits 510 milliseconds between batches to hit the next block.
  */
-exports.massMint = async (assets, config) => {
+exports.mass = async (items, config) => {
   const eos = await getAPI(config.network, config.privateKey);
 
   const auth = {
     authorization: [`${config.miner}@${config.permission}`],
   };
 
-  let assetsFrom = assets.slice(minted());
+  let itemsFrom = items.slice(processed());
 
   started = Date.now();
 
-  await recurseBatch(assetsFrom, eos, auth, config);
+  await recurseBatch(itemsFrom, eos, auth, config);
 };
 
-const recurseBatch = async (assets, eos, auth, config) => {
-  if (assets.length == 0) return true;
+const recurseBatch = async (items, eos, auth, config) => {
+  if (items.length == 0) return true;
 
-  logger.info(`Total assets to process: ${assets.length}`);
+  logger.info(`Total items to process: ${items.length}`);
 
   await pMap(
-    assets,
+    items,
     (batch, index) => {
-      printEta(index, assets.length - index);
+      printEta(index, items.length - index);
       return dropBatch(batch, eos, auth, config);
     },
     { concurrency: 1 }
@@ -74,16 +74,15 @@ const dropBatch = async (batch, eos, auth, config, tries = 0) => {
     return false;
   }
 
-  const { smartcontract, permission } = config;
+  const { smartcontract, permission, sc_action } = config;
   const {
-    authorized_minter,
-    new_asset_owner,
+    authorized_creator,
     collection_name,
     schema_name,
-    template_id,
+    transferable,
+    burnable,
+    max_supply,
     immutable_data,
-    mutable_data,
-    tokens_to_back,
   } = batch;
 
   let transactionId;
@@ -91,22 +90,21 @@ const dropBatch = async (batch, eos, auth, config, tries = 0) => {
 
   actions.push({
     account: smartcontract,
-    name: "mintasset",
+    name: sc_action,
     authorization: [
       {
-        actor: authorized_minter,
+        actor: authorized_creator,
         permission,
       },
     ],
     data: {
-      authorized_minter,
+      authorized_creator,
       collection_name,
       schema_name,
-      template_id,
-      new_asset_owner,
+      transferable,
+      burnable,
+      max_supply,
       immutable_data,
-      mutable_data,
-      tokens_to_back,
     },
   });
 
@@ -129,7 +127,7 @@ const dropBatch = async (batch, eos, auth, config, tries = 0) => {
     return await dropBatch(eos, auth, config, tries + 1);
   }
 
-  db.set("minted", minted() + 1).write();
+  db.set("processed", processed() + 1).write();
   logger.warn(`${transactionId}`);
   return true;
 };

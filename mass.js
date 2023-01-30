@@ -18,10 +18,10 @@ const setup = () => {
 
   const low = require("lowdb");
   const FileSync = require("lowdb/adapters/FileSync");
-  const adapter = new FileSync("db/massmint.json");
+  const adapter = new FileSync("db/mass.json");
   const _db = low(adapter);
 
-  _db.defaults({ total: 0, minted: 0, failed: [] }).write();
+  _db.defaults({ total: 0, processed: 0, failed: [] }).write();
 
   const logFormat = winston.format.printf(
     (info) => `${new Date().toLocaleString()} - ${info.message}`
@@ -32,7 +32,7 @@ const setup = () => {
     transports: [
       new winston.transports.Console(),
       new winston.transports.File({
-        filename: `logs/${+new Date()}_massmint.log`,
+        filename: `logs/${+new Date()}_mass.log`,
         level: "silly",
       }),
     ],
@@ -67,7 +67,7 @@ const run = async () => {
 
   if (
     (await Prompter.prompt(
-      `\r\nYou are performing an MASSMINT. Is this correct? Have you reset the DB? \r\nPress enter to continue`
+      `\r\nYou are performing an MASS. Is this correct? Have you reset the DB? \r\nPress enter to continue`
     )) !== ""
   )
     process.exit();
@@ -76,16 +76,16 @@ const run = async () => {
     "\r\n------------------------------------------------------------------\r\n"
   );
 
-  let assets = await CsvTools.getCSV("assets.csv");
-  const assetsJSON = CsvTools.csvToJson(assets);
+  let items = await CsvTools.getCSV("items.csv");
+  const itemsJSON = CsvTools.csvToJson(items);
 
-  db.set("total", assetsJSON.length).write();
-  const minted = db.get("minted").value();
+  db.set("total", itemsJSON.length).write();
+  const processed = db.get("processed").value();
   const total = db.get("total").value();
 
   logger.warn(
-    `Starting to minting. Already minted: ${minted}. Need to mint: ${
-      total - minted
+    `Starting to minting. Already processed: ${processed}. Need to mint: ${
+      total - processed
     } `
   );
   logger.warn(
@@ -95,9 +95,9 @@ const run = async () => {
   // Shutting off IO
   Prompter.donePrompting();
 
-  await ChainTools.massMint(assetsJSON, config);
+  await ChainTools.mass(itemsJSON, config);
 
-  logger.warn(`Finished MASSMINT at ${new Date().toLocaleString()}`);
+  logger.warn(`Finished MASS at ${new Date().toLocaleString()}`);
   process.exit();
 };
 

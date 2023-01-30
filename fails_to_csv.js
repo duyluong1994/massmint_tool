@@ -22,4 +22,4 @@ const failsToSnapshot = async (inputDbPath, outputPath) => {
   fs.writeFileSync(outputPath, csv, { encoding: `utf8` });
 };
 
-failsToSnapshot("db/massmint.json", "failed-assets.csv");
+failsToSnapshot("db/mass.json", "failed-items.csv");

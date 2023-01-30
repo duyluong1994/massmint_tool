@@ -1,11 +1,11 @@
 {
-  "name": "massmint",
+  "name": "mass",
   "version": "1.0.0",
-  "description": "Atomicassets massmint",
-  "main": "massmint.js",
+  "description": "Atomicassets mass",
+  "main": "mass.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node  massmint.js"
+    "start": "node  mass.js"
   },
   "author": "",
   "license": "ISC",
